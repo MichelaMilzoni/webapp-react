@@ -1,6 +1,9 @@
 //* Importo il modulo Express
 const express = require('express');
 
+//* Importo CORS
+const cors = require('cors');
+
 //* Importo e configuro il modulo dotenv
 require('dotenv').config();
 
@@ -24,7 +27,9 @@ const appUrl = process.env.APP_URL;
 //* Eseguo il test di connessione al database all'avvio dell'app
 testDbConnection();
 
+
 //* Configuro i middleware globali
+app.use(cors());
 app.use('/movies_cover', serveStaticFiles());
 
 //* Definisco le rotte dell'applicazione
