@@ -13,5 +13,8 @@ router.get('/', movieController.getAllMovies);
 //SHOW
 router.get('/:id', movieController.getMovieById);
 
+// Rotta POST Aggiunge una nuova recensione per un film specifico (/:id/reviews)
+router.post('/:id/reviews', movieController.addReview);
+
 //* Esporto il router
 module.exports = router;

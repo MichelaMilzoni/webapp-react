@@ -95,9 +95,71 @@ function getMovieById(req, res) {
 }
 // Chiudo la funzione getMovieById
 
+//* aggiungo funzione addReview che gestirà la logica per l'inserimento di una nuova recensione
+    function addReview(req, res) {
+        // Recupero l'ID del film dall'URL params
+        const movieId = req.params.id;
+        // Recupero i dati della recensione dal body della richiesta
+        const { name, vote, text } = req.body;
+
+        // Validazione base dei dati di input
+        if (!name || !vote || !text) {
+            return res.status(400).json({ error: 'Nome, voto e testo della recensione sono campi obbligatori.' });
+        }
+        if (typeof vote !== 'number' || vote < 1 || vote > 5) {
+            return res.status(400).json({ error: 'Il voto deve essere un numero tra 1 e 5.' });
+        }
+
+        // Ottengo una nuova connessione al database
+        const connection = getConnection();
+
+        // Connetto il database e gestisco la callback
+        connection.connect(err => {
+            if (err) {
+                console.error('Errore durante la connessione al database per addReview:', err.message);
+                connection.end();
+                return sendServerError(res, 'Errore interno del server durante la connessione al database.');
+            }
+
+            // Eseguo la query per inserire la nuova recensione
+            // Controllo prima se il movie_id esiste nella tabella movies
+            const checkMovieSql = 'SELECT id FROM movies WHERE id = ?';
+            connection.query(checkMovieSql, [movieId], (error, results) => {
+                if (error) {
+                    console.error('Errore durante la verifica del film:', error.message);
+                    connection.end();
+                    return sendServerError(res, 'Errore interno del server durante la verifica del film.');
+                }
+
+                if (results.length === 0) {
+                    // Se il film non esiste, non si poù aggiungere la recensione
+                    connection.end();
+                    return sendNotFoundError(res, 'Film non trovato. Impossibile aggiungere recensione.');
+                }
+
+                // Se il film esiste, procedo con l'inserimento della recensione
+                const insertReviewSql = 'INSERT INTO reviews (movie_id, name, vote, text) VALUES (?, ?, ?, ?)';
+                const reviewData = [movieId, name, vote, text];
+
+                connection.query(insertReviewSql, reviewData, (insertError, insertResults) => {
+                    if (insertError) {
+                        console.error('Errore durante l\'inserimento della recensione:', insertError.message);
+                        connection.end();
+                        return sendServerError(res, 'Errore interno del server durante l\'inserimento della recensione.');
+                    }
+
+                    // Invio una risposta di successo con l'ID della nuova recensione
+                    res.status(201).json({ message: 'Recensione aggiunta con successo!', reviewId: insertResults.insertId });
+                    connection.end(); // Chiude la connessione dopo l'operazione
+                });
+            });
+        });
+    }
+
 
 //* Esporto le funzioni del controller
 module.exports = {
     getAllMovies,
-    getMovieById
+    getMovieById,
+    addReview
 };

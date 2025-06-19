@@ -7,6 +7,7 @@ import axios from "axios";
 import ReviewItem from "../components/ReviewItem";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import ReviewForm from "../components/ReviewForm";
 
 //* funzione del componente:
 function MovieDetailPage() {
@@ -14,44 +15,49 @@ function MovieDetailPage() {
   const [movie, setMovie] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshReviews, setRefreshReviews] = useState(0); // refresh
 
   const backendUrl = "http://localhost:3000";
 
+  // Funzione per recuperare i dettagli del film e le recensioni
+  const fetchMovie = () => {
+    setLoading(true);
+    setError(null);
+
+    axios
+      .get(`${backendUrl}/movies/${id}`)
+      .then((response) => {
+        setMovie(response.data);
+      })
+      .catch((err) => {
+        console.error(`Errore nel recupero del film con ID ${id}:`, err);
+        if (err.response && err.response.status === 404) {
+          setError("Film non trovato.");
+        } else {
+          setError(
+            "Impossibile caricare i dettagli del film. Assicurati che il backend sia in esecuzione."
+          );
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  // useEffect per eseguire la chiamata API quando il componente viene montato, l'ID cambia o refreshReviews cambia
   useEffect(() => {
-    const fetchMovie = () => {
-      setLoading(true);
-      setError(null);
-
-      axios
-        .get(`${backendUrl}/movies/${id}`)
-        .then((response) => {
-          setMovie(response.data);
-        })
-        .catch((err) => {
-          console.error(`Errore nel recupero del film con ID ${id}:`, err);
-          if (err.response && err.response.status === 404) {
-            setError("Film non trovato.");
-          } else {
-            setError(
-              "Impossibile caricare i dettagli del film. Assicurati che il backend sia in esecuzione."
-            );
-          }
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    };
-
     if (id) {
       fetchMovie();
     }
-  }, [id]);
+  }, [id, refreshReviews]); // Aggiunto refreshReviews alle dipendenze
+
+  // Funzione di callback per aggiornare le recensioni dopo l'invio del form
+  const handleReviewAdded = () => {
+    setRefreshReviews((prev) => prev + 1); // Incrementa lo stato per forzare useEffect a rifare la chiamata
+  };
 
   return (
     <div className="container py-4">
-      {" "}
-      {/* Contenitore Bootstrap */}
-      {/* Pulsante "Torna alla lista" con stile Bootstrap */}
       <Link to="/" className="btn btn-secondary mb-4">
         <svg
           className="bi bi-arrow-left me-2"
@@ -68,21 +74,19 @@ function MovieDetailPage() {
         </svg>
         Torna alla lista
       </Link>
+
       {loading && <LoadingSpinner />}
       {error && <ErrorMessage message={error} />}
+
       {!loading && !error && movie && (
         <div className="card shadow-lg mb-4">
-          {" "}
-          {/* Card principale del film */}
           <div className="row g-0">
-            {" "}
-            {/* Griglia interna per immagine e dettagli */}
             <div className="col-md-4">
               <img
                 src={`${backendUrl}/movies_cover/${movie.image}`}
                 alt={movie.title}
-                className="img-fluid rounded-start" // Immagine responsive e angoli arrotondati
-                style={{ height: "100%", objectFit: "cover" }} // Stile per coprire bene l'area
+                className="img-fluid rounded-start"
+                style={{ height: "100%", objectFit: "cover" }}
                 onError={(e) => {
                   e.target.onerror = null;
                   e.target.src =
@@ -92,8 +96,7 @@ function MovieDetailPage() {
             </div>
             <div className="col-md-8">
               <div className="card-body">
-                <h1 className="card-title display-5 fw-bold text-primary mb-3">{movie.title}</h1>{" "}
-                {/* Titolo del film */}
+                <h1 className="card-title display-5 fw-bold text-primary mb-3">{movie.title}</h1>
                 <p className="card-text fs-5 mb-2">
                   <strong>Regista:</strong> {movie.director}
                 </p>
@@ -103,19 +106,15 @@ function MovieDetailPage() {
                 <p className="card-text fs-6 mb-3">
                   <strong>Anno di uscita:</strong> {movie.release_year}
                 </p>
-                <p className="card-text lead text-justify">{movie.abstract}</p>{" "}
-                {/* Abstract con testo giustificato */}
+                <p className="card-text lead text-justify">{movie.abstract}</p>
               </div>
             </div>
           </div>
+
           <div className="card-body border-top">
-            {" "}
-            {/* Sezione recensioni con bordo superiore */}
             <h2 className="card-title h3 mb-4">Recensioni</h2>
             {movie.reviews && movie.reviews.length > 0 ? (
               <div className="d-flex flex-column gap-3">
-                {" "}
-                {/* Layout flessibile per recensioni */}
                 {movie.reviews.map((review) => (
                   <ReviewItem key={review.id} review={review} />
                 ))}
@@ -123,6 +122,10 @@ function MovieDetailPage() {
             ) : (
               <p className="text-muted">Nessuna recensione disponibile per questo film.</p>
             )}
+
+            {/* Inserisci il componente ReviewForm qui */}
+            {/* Passa l'ID del film e la funzione di callback */}
+            <ReviewForm movieId={id} onReviewAdded={handleReviewAdded} />
           </div>
         </div>
       )}
